@@ -1,0 +1,8 @@
+// Sample json file(remove these comments)#
+// Mapping between sen.se nodeuid and mqtt name
+// node uids from https://apis.sen.se/v2/nodes/
+
+{
+    "n1b81Gy9gU0rUwM77pGltrUanHYHa1ea": "kitchen",
+    "Alp1R1dGO6B9qhtGmNB5SxZZpFNSfyVl": "bedroom",
+}

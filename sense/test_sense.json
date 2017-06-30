@@ -1,0 +1,21 @@
+{
+    "feedUid": "XXX",
+    "nodeUid": "XXX",
+    "type": "alert",
+    "profile": "DoorStandard",
+    "dateEvent": "2015-07-31T17:09:15.941376",
+    "dateServer": "2015-07-31T17:09:15.941382",
+    "expiresAt": null,
+    "gatewayNodeUid": "XXX",
+    "geometry": {
+        "type": "Point",
+        "coordinates": [
+            46.840176299999996,
+            1.2855582
+        ]
+    },
+    "signal": 3,
+    "data": {
+        "centidegreeCelsius": 3730
+    }
+}
