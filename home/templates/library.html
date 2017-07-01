@@ -1,0 +1,37 @@
+{{ define "content" }}
+<div id="library">
+    <div class="header">
+    <a id="menu-href" href="" >
+      <h1><span class="first">Biblan</span><span class="second">&#x2630;</span></h1>
+    </a>
+    </div>
+    <div class="content" id="content">
+        <ul class="striped thumbnail">
+        {{ range .OpacsSlice }}
+            <li>
+                <img src="images/{{ .Name | ToLower }}.png" class="thumbnail-circular" />
+                <h2>{{ .Name }}</h2>
+                {{ if ne .Fee 0.0 }}
+                <p>Skuld: {{ .Fee }} SEK</p>
+                {{ end }}
+            </li>
+
+            <li><small>
+              {{ range .Books }}
+                  {{ .DateDue.Format "2006-01-02" }} {{ .Title }}
+                      {{ .LibraryName | libraryName }}
+                      {{ if not .Renewable }}(ej omlån){{ end }}<br/>
+              {{ end }}
+              {{ range .Reservations }}
+                  {{ if .PickupNumber }}
+                  Hämta nr {{ .PickupNumber }} senast {{ .PickupDue.format "2006-01-02" }} {{ .Title }}<br/>
+                  {{ else }}
+                  Köplats {{ .QuePosition }} av {{ .BooksTotal }}: {{ .Title }}<br/>
+                  {{ end }}
+              {{ end }}
+            </small></li>
+        {{ end }} <!-- range -->
+        </ul>
+    </div>
+</div>
+{{ end }} <!-- content -->

@@ -1,0 +1,23 @@
+{{ define "content" }}
+<div id="bus">
+    <div class="header">
+    <a id="menu-href" href="" >
+      <h1><span class="first">Busskort</span><span class="second">&#x2630;</span></h1>
+    </a>
+    </div>
+    <div class="content" id="content">
+        <ul class="thumbnail">
+            {{ range .OtrafsSlice }}
+            <li>
+                <img src="images/{{ .Name | ToLower }}.png" class="thumbnail-circular" />
+                <h2>{{ .Name }}</h2>
+                <p>{{ .Amount }} SEK
+                   {{ if not .Cardend.IsZero }}Busskort tom: {{ .Cardend.Format "2006-01-02" }} {{ end }}
+                  <br />{{ .CardUpdated.Format "(2006-01-02 15:04)" }}
+                </p>
+            </li>
+            {{ end }}
+        </ul>
+    </div>
+</div>
+{{ end }} !-- content -->

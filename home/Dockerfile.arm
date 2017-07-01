@@ -1,0 +1,6 @@
+FROM scratch
+COPY sitebuilder-arm /
+COPY templates /templates
+COPY public /public
+
+ENTRYPOINT ["/sitebuilder-arm"]

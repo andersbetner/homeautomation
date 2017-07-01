@@ -15,9 +15,8 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/andersbetner/homeautomation/webserver"
+	"github.com/andersbetner/homeautomation/util"
 	"github.com/prometheus/client_golang/prometheus"
-
 	"gobot.io/x/gobot"
 	"gobot.io/x/gobot/platforms/mqtt"
 )
@@ -142,7 +141,7 @@ func updateHandler(msg mqtt.Message) {
 func main() {
 	prometheusMux := http.NewServeMux()
 	prometheusMux.Handle("/metrics", prometheus.Handler())
-	go webserver.Webserver("Prometheus", ":9100", prometheusMux)
+	go util.Webserver("Prometheus", ":9100", prometheusMux)
 
 	mqttAdaptor = mqtt.NewAdaptor(mqttHost, "ica")
 	work := func() {

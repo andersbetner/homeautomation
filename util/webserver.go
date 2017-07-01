@@ -1,11 +1,12 @@
-package webserver
+package util
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 // Webserver creates a webserver that gracefully shuts down on ctrl-C
@@ -15,8 +16,8 @@ func Webserver(name string, address string, handler http.Handler) {
 		done := make(chan os.Signal)
 		signal.Notify(done, os.Interrupt)
 		<-done
-		fmt.Println("Shutting down " + name)
-		srv.Shutdown(context.Background())
+		log.Info("Shutting down ", name)
+		srv.Close()
 	}()
 	err := srv.ListenAndServe()
 	if err != nil && err != http.ErrServerClosed {

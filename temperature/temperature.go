@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/andersbetner/homeautomation/webserver"
+	"github.com/andersbetner/homeautomation/util"
 	"github.com/containous/traefik/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"gobot.io/x/gobot"
@@ -20,21 +20,23 @@ var (
 	mqttAdaptor     *mqtt.Adaptor
 	mqttHost        string
 	temperatureURL  string
-	updateInterval  int // minutes default 15
+	updateInterval  int // minutes default=15
 	promUpdateCount = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "ab_update_count",
-		Help: "Number of updates performed.",
+		Help: "Number of updates performed. (periodicity = updates every x minutes)",
 	},
-		[]string{"status"})
-	promUpdateTimestamp = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "ab_update_timestamp",
-		Help: "Timestamp of last update.",
-	})
+		[]string{"name", "status", "periodicity"})
+	promTemperature = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "ab_temperature",
+			Help: "Temperature. (periodicity = updates every x minutes)",
+		}, []string{"name", "periodicity"},
+	)
 )
 
 func init() {
 	prometheus.MustRegister(promUpdateCount)
-	prometheus.MustRegister(promUpdateTimestamp)
+	prometheus.MustRegister(promTemperature)
 
 	exit := false
 	mqttHost, _ = os.LookupEnv("TEMPERATURE_MQTTHOST")
@@ -97,7 +99,7 @@ func update() {
 
 		return
 	}
-	if !mqttAdaptor.Publish("temperature/ekholmen", []byte(temperature)) {
+	if !mqttAdaptor.Publish("temperature/outdoor", []byte(temperature)) {
 		promUpdateCount.WithLabelValues("500").Inc()
 		log.WithField("error", "mqtt").Error("Error publishing mqtt")
 
@@ -105,13 +107,13 @@ func update() {
 	}
 
 	promUpdateCount.WithLabelValues("200").Inc()
-	promUpdateTimestamp.SetToCurrentTime()
+	promTemperature.SetToCurrentTime()
 }
 
 func main() {
 	prometheusMux := http.NewServeMux()
 	prometheusMux.Handle("/metrics", prometheus.Handler())
-	go webserver.Webserver("Prometheus", ":9100", prometheusMux)
+	go util.Webserver("Prometheus", ":9100", prometheusMux)
 
 	mqttAdaptor = mqtt.NewAdaptor(mqttHost, "temperature")
 	work := func() {

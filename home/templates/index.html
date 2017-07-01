@@ -1,0 +1,44 @@
+{{ define "content" }}
+<div>
+    <div class="header">
+    <a id="menu-href" href="" >
+      <h1><span class="first">Hemma</span><span class="second">&#x2630;</span></h1>
+    </a>
+    </div>
+    <div class="content" id="content">
+      <div class="col-2">
+      Ute<br/>
+      <br/>
+      Dusch<br/>
+      Hall<br/>
+      Kök<br/><br/>
+
+      Loft<br/>
+      Lowe<br/>
+      Sovrum<br/><br/>
+
+      Uterum<br/>
+      <br/>
+      ICA-kort
+      </div>
+      <div class="col-2 right">
+      {{ with .Temperature }}
+          {{ printf "%.1f" .Outdoor }} °C<br/>
+          <br/>
+          {{ printf "%.1f" .Shower }} °C<br/>
+          {{ printf "%.1f" .Hall }} °C<br/>
+          {{ printf "%.1f" .Kitchen }} °C<br/><br/>
+
+          {{ printf "%.1f" .Loft }} °C<br/>
+          {{ printf "%.1f" .Lowe }} °C<br/>
+          {{ printf "%.1f" .Bedroom }} °C<br/><br/>
+
+          {{ printf "%.1f" .Outdoorroom }} °C<br/>
+      {{ end }}      
+          <br/>
+          {{ .Ica }} SEK
+    </div>
+
+    </div>
+</div>
+{{ end }} <!-- content -->

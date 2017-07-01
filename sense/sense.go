@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/andersbetner/homeautomation/webserver"
+	"github.com/andersbetner/homeautomation/util"
 	"github.com/containous/traefik/log"
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -36,7 +36,7 @@ var (
 			Name: "ab_sensor_updates_total",
 			Help: "How many times this item has been updated.",
 		},
-		[]string{"status", "name"},
+		[]string{"name", "status", "periodicity"},
 	)
 )
 
@@ -87,11 +87,11 @@ func senseHandler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	prometheusMux := http.NewServeMux()
 	prometheusMux.Handle("/metrics", prometheus.Handler())
-	go webserver.Webserver("Prometheus", ":9100", prometheusMux)
+	go util.Webserver("Prometheus", ":9100", prometheusMux)
 
 	senseMux := http.NewServeMux()
 	senseMux.HandleFunc("/", senseHandler)
-	go webserver.Webserver("sense", ":8080", senseMux)
+	go util.Webserver("sense", ":8080", senseMux)
 
 	mqttAdaptor = mqtt.NewAdaptor(mqttHost, "sense")
 	work := func() {

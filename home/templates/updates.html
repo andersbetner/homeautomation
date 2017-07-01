@@ -1,0 +1,28 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<div id="updates">
+    <div class="header">
+    <a id="menu-href" href="" >
+      <h1><span class="first">Uppdateringar</span><span class="second">&#x2630;</span></h1>
+    </a>
+    </div>
+    <div class="content" id="content">
+        <ul class="striped">
+        {% for host in hosts %}
+            <li>
+                <h2>{{ host.name }}</h2>
+            </li>
+
+            <li><small>
+            {% for package in host.upgraded %}
+                {{ package }}<br>
+            {% endfor %}
+            <br>
+            </small></li>
+
+        {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock content %}
