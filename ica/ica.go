@@ -24,20 +24,18 @@ import (
 )
 
 var (
-	mqttHost        string
-	icaUser         string
-	icaPassword     string
-	agent           *ag.Agent
-	updateInterval  int // Minutes default = 30
-	promUpdateCount = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "ab_update_count",
-		Help: "Number of updates performed.",
-	},
-		[]string{"status"})
-	promUpdateTimestamp = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "ab_succsessful_update_timestamp",
-		Help: "Timestamp of last update.",
-	})
+	mqttHost          string
+	icaUser           string
+	icaPassword       string
+	agent             *ag.Agent
+	updateInterval    int // Minutes default = 30
+	promUpdateCounter = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "ab_sensor_updates_total",
+			Help: "How many times this item has been updated.",
+		},
+		[]string{"status", "type", "name"},
+	)
 )
 
 type accountInfo struct {
@@ -54,8 +52,11 @@ func update() {
 	request.SetBasicAuth(icaUser, icaPassword)
 	resp, err := client.Do(request)
 	if err != nil {
-		promUpdateCount.WithLabelValues("500").Inc()
-		log.WithField("error", err).Error("Error in basic auth")
+		promUpdateCounter.WithLabelValues("500", "ica", "auth").Inc()
+		log.WithFields(log.Fields{"error": err,
+			"type": "ica",
+			"name": "basicauth"}).Error("Error in basic auth")
+
 		return
 	}
 	defer resp.Body.Close()
@@ -65,44 +66,54 @@ func update() {
 	request.Header.Add("AuthenticationTicket", authTicket)
 	resp, err = client.Do(request)
 	if err != nil {
-		promUpdateCount.WithLabelValues("500").Inc()
-		log.WithField("error", err).Error("Error in authticket")
+		promUpdateCounter.WithLabelValues("500", "ica", "auth").Inc()
+		log.WithFields(log.Fields{"error": err,
+			"type": "ica",
+			"name": "authticket"}).Error("Error in authticket")
 
 		return
 	}
 	defer resp.Body.Close()
 	jsonBlob, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		promUpdateCount.WithLabelValues("500").Inc()
-		log.WithField("error", err).Error("Error parsing response body")
+		promUpdateCounter.WithLabelValues("500", "ica", "parse").Inc()
+		log.WithFields(log.Fields{"error": err,
+			"type": "ica",
+			"name": "parse"}).Error("Error parsing response body")
 
 		return
 	}
 	ica := accountInfo{}
 	err = json.Unmarshal(jsonBlob, &ica)
 	if err != nil {
-		promUpdateCount.WithLabelValues("500").Inc()
-		log.WithField("error", err).Error("Error unmarshal json")
+		promUpdateCounter.WithLabelValues("500", "ica", "parse").Inc()
+		log.WithFields(log.Fields{"error": err,
+			"type": "ica",
+			"name": "json"}).Error("Error unmarshal json")
 		return
 	}
 
 	err = agent.Publish("ica/availableamount", true, strconv.Itoa(int(ica.AvailableAmount)))
 	if err != nil {
-		promUpdateCount.WithLabelValues("500").Inc()
-		log.WithField("error", "mqtt").Error("Error publishing ica/availableamount")
+		promUpdateCounter.WithLabelValues("500", "ica", "publish").Inc()
+		log.WithFields(log.Fields{"error": err,
+			"type": "ica",
+			"name": "availableamount"}).Error("Error publishing ica/availableamount")
 
 		return
 	}
 	err = agent.Publish("ica/all", true, string(jsonBlob))
 	if err != nil {
-		promUpdateCount.WithLabelValues("500").Inc()
-		log.WithField("error", err).Error("Error publishing ica/all")
+		promUpdateCounter.WithLabelValues("500", "ica", "publish").Inc()
+		log.WithFields(log.Fields{"error": err,
+			"type": "ica",
+			"name": "all"}).Error("Error publishing ica/all")
 
 		return
 	}
 
-	promUpdateCount.WithLabelValues("200").Inc()
-	promUpdateTimestamp.SetToCurrentTime()
+	promUpdateCounter.WithLabelValues("200", "ica", "publish").Inc()
+	log.WithField("amount", ica.AvailableAmount).Debug("Update published")
 
 }
 
@@ -114,8 +125,7 @@ func updateHandler(client mqtt.Client, msg mqtt.Message) {
 }
 
 func init() {
-	prometheus.MustRegister(promUpdateCount)
-	prometheus.MustRegister(promUpdateTimestamp)
+	prometheus.MustRegister(promUpdateCounter)
 
 	exit := false
 	flag.StringVar(&mqttHost, "mqtthost", "", "address and port for mqtt server eg tcp://example.com:1883")
