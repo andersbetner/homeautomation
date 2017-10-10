@@ -8,6 +8,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -117,9 +118,10 @@ func init() {
 	prometheus.MustRegister(promUpdateTimestamp)
 
 	exit := false
-	mqttHost, _ = os.LookupEnv("ICA_MQTTHOST")
+	flag.StringVar(&mqttHost, "mqtthost", "", "address and port for mqtt server eg tcp://example.com:1883")
+	flag.Parse()
 	if mqttHost == "" {
-		os.Stderr.WriteString("env ICA_MQTTHOST missing tcp://example.com:1883\n")
+		os.Stderr.WriteString("--mqtthost missing eg --mqtthost=tcp://example.com:1883\n")
 		exit = true
 	}
 	icaUser, _ = os.LookupEnv("ICA_USER")
@@ -132,21 +134,10 @@ func init() {
 		os.Stderr.WriteString("env ICA_PASSWORD missing\n")
 		exit = true
 	}
-	interval, _ := os.LookupEnv("ICA_UPDATE_INTERVAL")
-	if interval == "" {
-		os.Stderr.WriteString("env ICA_UPDATE_INTERVAL missing\n")
-		exit = true
-	}
-	var err error
-	updateInterval, err = strconv.Atoi(interval)
-	if err != nil || updateInterval < 1 {
-		os.Stderr.WriteString("env ICA_UPDATE_INTERVAL must be integer > 0\n")
-		exit = true
-	}
-
 	if exit {
 		os.Exit(1)
 	}
+	flag.IntVar(&updateInterval, "updateinterval", 30, "integer > 0")
 }
 
 func main() {
