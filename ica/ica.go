@@ -38,6 +38,12 @@ var (
 		},
 		[]string{"status", "type", "topic"},
 	)
+	promAmount = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "ab_ica",
+			Help: "ICA data",
+		}, []string{"topic"},
+	)
 )
 
 type accountInfo struct {
@@ -105,6 +111,7 @@ func update() {
 		return
 	}
 	promUpdateCounter.WithLabelValues("200", "ica", "availableamount").Inc()
+	promAmount.WithLabelValues("availableamount").Set(ica.AvailableAmount)
 
 	err = agent.Publish("ica/all", true, string(jsonBlob))
 	if err != nil {
@@ -130,6 +137,7 @@ func updateHandler(client mqtt.Client, msg mqtt.Message) {
 func init() {
 	log.SetLevel(log.DebugLevel)
 	prometheus.MustRegister(promUpdateCounter)
+	prometheus.MustRegister(promAmount)
 
 	exit := false
 	flag.StringVar(&mqttHost, "mqtthost", "", "address and port for mqtt server eg tcp://example.com:1883")

@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -29,12 +30,12 @@ var (
 		},
 		[]string{"status", "type", "topic"},
 	)
-	// promTemperature = prometheus.NewGaugeVec(
-	// 	prometheus.GaugeOpts{
-	// 		Name: "ab_temperature",
-	// 		Help: "Temperature. (periodicity = updates every x minutes)",
-	// 	}, []string{"name", "periodicity"},
-	// )
+	promTemperature = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "ab_temperature",
+			Help: "Temperature.",
+		}, []string{"topic"},
+	)
 )
 
 // update gets the outdoor temperature from temperatur.nu
@@ -59,15 +60,14 @@ func update() {
 
 		return
 	}
-	temperature := strings.TrimSpace(string(body))
-	_, err = strconv.ParseFloat(temperature, 64)
+	temperature, err := strconv.ParseFloat(strings.TrimSpace(string(body)), 64)
 	if err != nil {
 		promUpdateCounter.WithLabelValues("500", "temperature", "parse").Inc()
-		log.WithField("error", string(body)).Error("Error malformed float value", temperature)
+		log.WithField("error", string(body)).Error("Error malformed float value", string(body))
 
 		return
 	}
-	err = agent.Publish("temperature/outdoor", true, temperature)
+	err = agent.Publish("temperature/outdoor", true, fmt.Sprintf("%v", temperature))
 	if err != nil {
 		promUpdateCounter.WithLabelValues("500", "temperature", "publish").Inc()
 		log.WithField("error", err).Error("Error publishing mqtt")
@@ -76,13 +76,14 @@ func update() {
 	}
 
 	promUpdateCounter.WithLabelValues("200", "temperature", "outdoor").Inc()
+	promTemperature.WithLabelValues("outdoor").Set(temperature)
 	log.WithField("temperature", temperature).Debug("Outdoor temp")
 }
 
 func init() {
 	log.SetLevel(log.DebugLevel)
 	prometheus.MustRegister(promUpdateCounter)
-	// prometheus.MustRegister(promTemperature)
+	prometheus.MustRegister(promTemperature)
 
 	exit := false
 	flag.StringVar(&mqttHost, "mqtthost", "", "address and port for mqtt server eg tcp://example.com:1883")

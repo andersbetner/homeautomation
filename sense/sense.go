@@ -28,15 +28,21 @@ type senseData struct {
 }
 
 var (
-	nodeUIDMap    map[string]string
-	mqttHost      string
-	agent         *ag.Agent
-	updateCounter = prometheus.NewCounterVec(
+	nodeUIDMap        map[string]string
+	mqttHost          string
+	agent             *ag.Agent
+	promUpdateCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "ab_sensor_updates_total",
 			Help: "How many times this item has been updated.",
 		},
 		[]string{"status", "type", "topic"},
+	)
+	promTemperature = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "ab_temperature",
+			Help: "Temperature.",
+		}, []string{"topic"},
 	)
 )
 
@@ -49,25 +55,33 @@ func senseHandler(w http.ResponseWriter, r *http.Request) {
 	err := json.Unmarshal(postdata, &indata)
 	if err != nil {
 		log.WithField("error", "post").Error("Error unmarshaling posted value", err)
-		updateCounter.WithLabelValues("500", "temperature", "parse").Inc()
+		promUpdateCounter.WithLabelValues("500", "temperature", "parse").Inc()
+
 		return
 	}
 	response := []byte("ok")
 	w.Header().Set("Content-Length", fmt.Sprint(len(response)))
 	w.Write(response)
-	if name, ok := nodeUIDMap[indata.NodeUID]; ok {
-		var temperature = float32(indata.Data.CentidegreeCelsius) / 100
-		agent.Publish("temperature/"+name, true, fmt.Sprintf("%v", temperature))
-		updateCounter.WithLabelValues("200", "temperature", name).Inc()
-		log.WithFields(log.Fields{"topic": name, "value": temperature}).Debug("Published")
-	} else {
-		updateCounter.WithLabelValues("400", "temperature", "unknown").Inc()
+	sensor, ok := nodeUIDMap[indata.NodeUID]
+	if !ok {
+		promUpdateCounter.WithLabelValues("400", "temperature", "unknown").Inc()
 		log.WithField("error", fmt.Sprintf("%#v", indata)).Error("Unknown sensor")
+
+		return
 	}
+	var temperature = float64(indata.Data.CentidegreeCelsius) / 100
+	agent.Publish("temperature/"+sensor, true, fmt.Sprintf("%v", temperature))
+	promUpdateCounter.WithLabelValues("200", "temperature", sensor).Inc()
+	promTemperature.WithLabelValues(sensor).Set(temperature)
+	log.WithFields(log.Fields{"topic": sensor, "value": temperature}).Debug("Published")
+
+	return
 }
 
 func init() {
-	prometheus.MustRegister(updateCounter)
+	prometheus.MustRegister(promUpdateCounter)
+	prometheus.MustRegister(promTemperature)
+
 	var configFile string
 	flag.StringVar(&mqttHost, "mqtthost", "", "address and port for mqtt server eg tcp://example.com:1883")
 	flag.StringVar(&configFile, "config", "", "full path to configfile eg --config=/etc/id_map.json ")
