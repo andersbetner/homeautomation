@@ -3,6 +3,8 @@ mqtt topics
 ica/update (Will update on whatever message)
 ica/availableamount
 ica/all
+
+type, topic, status
 */
 package main
 
@@ -34,7 +36,7 @@ var (
 			Name: "ab_sensor_updates_total",
 			Help: "How many times this item has been updated.",
 		},
-		[]string{"status", "type", "name"},
+		[]string{"status", "type", "topic"},
 	)
 )
 
@@ -54,8 +56,8 @@ func update() {
 	if err != nil {
 		promUpdateCounter.WithLabelValues("500", "ica", "auth").Inc()
 		log.WithFields(log.Fields{"error": err,
-			"type": "ica",
-			"name": "basicauth"}).Error("Error in basic auth")
+			"type":  "ica",
+			"topic": "basicauth"}).Error("Error in basic auth")
 
 		return
 	}
@@ -68,8 +70,8 @@ func update() {
 	if err != nil {
 		promUpdateCounter.WithLabelValues("500", "ica", "auth").Inc()
 		log.WithFields(log.Fields{"error": err,
-			"type": "ica",
-			"name": "authticket"}).Error("Error in authticket")
+			"type":  "ica",
+			"topic": "authticket"}).Error("Error in authticket")
 
 		return
 	}
@@ -78,8 +80,8 @@ func update() {
 	if err != nil {
 		promUpdateCounter.WithLabelValues("500", "ica", "parse").Inc()
 		log.WithFields(log.Fields{"error": err,
-			"type": "ica",
-			"name": "parse"}).Error("Error parsing response body")
+			"type":  "ica",
+			"topic": "parse"}).Error("Error parsing response body")
 
 		return
 	}
@@ -88,8 +90,8 @@ func update() {
 	if err != nil {
 		promUpdateCounter.WithLabelValues("500", "ica", "parse").Inc()
 		log.WithFields(log.Fields{"error": err,
-			"type": "ica",
-			"name": "json"}).Error("Error unmarshal json")
+			"type":  "ica",
+			"topic": "json"}).Error("Error unmarshal json")
 		return
 	}
 
@@ -97,22 +99,23 @@ func update() {
 	if err != nil {
 		promUpdateCounter.WithLabelValues("500", "ica", "publish").Inc()
 		log.WithFields(log.Fields{"error": err,
-			"type": "ica",
-			"name": "availableamount"}).Error("Error publishing ica/availableamount")
+			"type":  "ica",
+			"topic": "availableamount"}).Error("Error publishing ica/availableamount")
 
 		return
 	}
+	promUpdateCounter.WithLabelValues("200", "ica", "availableamount").Inc()
+
 	err = agent.Publish("ica/all", true, string(jsonBlob))
 	if err != nil {
 		promUpdateCounter.WithLabelValues("500", "ica", "publish").Inc()
 		log.WithFields(log.Fields{"error": err,
-			"type": "ica",
-			"name": "all"}).Error("Error publishing ica/all")
+			"type":  "ica",
+			"topic": "all"}).Error("Error publishing ica/all")
 
 		return
 	}
-
-	promUpdateCounter.WithLabelValues("200", "ica", "publish").Inc()
+	promUpdateCounter.WithLabelValues("200", "ica", "all").Inc()
 	log.WithField("amount", ica.AvailableAmount).Debug("Update published")
 
 }
@@ -125,6 +128,7 @@ func updateHandler(client mqtt.Client, msg mqtt.Message) {
 }
 
 func init() {
+	log.SetLevel(log.DebugLevel)
 	prometheus.MustRegister(promUpdateCounter)
 
 	exit := false
