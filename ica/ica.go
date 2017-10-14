@@ -133,6 +133,7 @@ func init() {
 
 	exit := false
 	flag.StringVar(&mqttHost, "mqtthost", "", "address and port for mqtt server eg tcp://example.com:1883")
+	flag.IntVar(&updateInterval, "updateinterval", 30, "integer > 0")
 	flag.Parse()
 	if mqttHost == "" {
 		os.Stderr.WriteString("--mqtthost missing eg --mqtthost=tcp://example.com:1883\n")
@@ -151,7 +152,7 @@ func init() {
 	if exit {
 		os.Exit(1)
 	}
-	flag.IntVar(&updateInterval, "updateinterval", 30, "integer > 0")
+
 }
 
 func main() {

@@ -1,73 +1,41 @@
 package main
 
 import (
+	"flag"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/andersbetner/homeautomation/util"
-	"github.com/containous/traefik/log"
+	ag "github.com/andersbetner/mqttagent"
 	"github.com/prometheus/client_golang/prometheus"
-	"gobot.io/x/gobot"
-	"gobot.io/x/gobot/platforms/mqtt"
 )
 
 var (
-	mqttAdaptor     *mqtt.Adaptor
-	mqttHost        string
-	temperatureURL  string
-	updateInterval  int // minutes default=15
-	promUpdateCount = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "ab_update_count",
-		Help: "Number of updates performed. (periodicity = updates every x minutes)",
-	},
-		[]string{"name", "status", "periodicity"})
-	promTemperature = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Name: "ab_temperature",
-			Help: "Temperature. (periodicity = updates every x minutes)",
-		}, []string{"name", "periodicity"},
+	mqttHost          string
+	agent             *ag.Agent
+	temperatureURL    string
+	updateInterval    int // minutes default=15
+	promUpdateCounter = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "ab_sensor_updates_total",
+			Help: "How many times this item has been updated.",
+		},
+		[]string{"status", "type", "topic"},
 	)
+	// promTemperature = prometheus.NewGaugeVec(
+	// 	prometheus.GaugeOpts{
+	// 		Name: "ab_temperature",
+	// 		Help: "Temperature. (periodicity = updates every x minutes)",
+	// 	}, []string{"name", "periodicity"},
+	// )
 )
-
-func init() {
-	prometheus.MustRegister(promUpdateCount)
-	prometheus.MustRegister(promTemperature)
-
-	exit := false
-	mqttHost, _ = os.LookupEnv("TEMPERATURE_MQTTHOST")
-	if mqttHost == "" {
-		os.Stderr.WriteString("env TEMPERATURE_MQTTHOST missing tcp://example.com:1883\n")
-		exit = true
-	}
-	temperatureURL, _ = os.LookupEnv("TEMPERATURE_URL")
-	if temperatureURL == "" {
-		os.Stderr.WriteString("env TEMPERATURE_URL missig, eg http://example.com/temp.txt\n")
-		exit = true
-	}
-	_, err := url.ParseRequestURI(temperatureURL)
-	if err != nil {
-		os.Stderr.WriteString("malformed url: " + temperatureURL + "\n")
-		exit = true
-	}
-	interval, _ := os.LookupEnv("TEMPERATURE_UPDATE_INTERVAL")
-	updateInterval = 15
-	if interval != "" {
-		updateInterval, err = strconv.Atoi(interval)
-		if err != nil || updateInterval < 1 {
-			os.Stderr.WriteString("env TEMPERATURE_UPDATE_INTERVAL must be an integer > 0\n")
-			exit = true
-		}
-	}
-	if exit {
-		os.Exit(1)
-	}
-
-}
 
 // update gets the outdoor temperature from temperatur.nu
 func update() {
@@ -78,52 +46,94 @@ func update() {
 	request, _ := http.NewRequest("GET", temperatureURL, nil)
 	resp, err := client.Do(request)
 	if err != nil {
-		promUpdateCount.WithLabelValues("500").Inc()
-		log.WithField("error", "request").Error("Error initiating request")
+		promUpdateCounter.WithLabelValues("500", "temperature", "request").Inc()
+		log.WithField("error", err).Error("Error initiating request")
 
 		return
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		promUpdateCount.WithLabelValues("500").Inc()
-		log.WithField("error", "body").Error("Error getting request body")
+		promUpdateCounter.WithLabelValues("500", "temperature", "parse").Inc()
+		log.WithField("error", err).Error("Error getting request body")
 
 		return
 	}
 	temperature := strings.TrimSpace(string(body))
 	_, err = strconv.ParseFloat(temperature, 64)
 	if err != nil {
-		promUpdateCount.WithLabelValues("500").Inc()
-		log.WithField("error", "value").Error("Error malformed float value", temperature)
+		promUpdateCounter.WithLabelValues("500", "temperature", "parse").Inc()
+		log.WithField("error", string(body)).Error("Error malformed float value", temperature)
 
 		return
 	}
-	if !mqttAdaptor.Publish("temperature/outdoor", []byte(temperature)) {
-		promUpdateCount.WithLabelValues("500").Inc()
-		log.WithField("error", "mqtt").Error("Error publishing mqtt")
+	err = agent.Publish("temperature/outdoor", true, temperature)
+	if err != nil {
+		promUpdateCounter.WithLabelValues("500", "temperature", "publish").Inc()
+		log.WithField("error", err).Error("Error publishing mqtt")
 
 		return
 	}
 
-	promUpdateCount.WithLabelValues("200").Inc()
-	promTemperature.SetToCurrentTime()
+	promUpdateCounter.WithLabelValues("200", "temperature", "outdoor").Inc()
+	log.WithField("temperature", temperature).Debug("Outdoor temp")
+}
+
+func init() {
+	log.SetLevel(log.DebugLevel)
+	prometheus.MustRegister(promUpdateCounter)
+	// prometheus.MustRegister(promTemperature)
+
+	exit := false
+	flag.StringVar(&mqttHost, "mqtthost", "", "address and port for mqtt server eg tcp://example.com:1883")
+	flag.StringVar(&temperatureURL, "url", "", "url for temperature server eg http://example.com/temp.txt")
+	flag.IntVar(&updateInterval, "interval", 15, "integer > 0")
+	flag.Parse()
+	if mqttHost == "" {
+		os.Stderr.WriteString("--mqtthost missing eg --mqtthost=tcp://example.com:1883\n")
+		exit = true
+	}
+
+	if temperatureURL == "" {
+		os.Stderr.WriteString("--url missig, eg --url=http://example.com/temp.txt\n")
+		exit = true
+	}
+	_, err := url.ParseRequestURI(temperatureURL)
+	if err != nil {
+		os.Stderr.WriteString("malformed url: " + temperatureURL + "\n")
+		exit = true
+	}
+
+	if exit {
+		os.Exit(1)
+	}
+
 }
 
 func main() {
+	log.SetLevel(log.DebugLevel)
 	prometheusMux := http.NewServeMux()
 	prometheusMux.Handle("/metrics", prometheus.Handler())
 	go util.Webserver("Prometheus", ":9100", prometheusMux)
 
-	mqttAdaptor = mqtt.NewAdaptor(mqttHost, "temperature")
-	work := func() {
-		update()
-		gobot.Every(time.Duration(updateInterval)*time.Minute, update)
+	agent = ag.NewAgent(mqttHost, "temperature")
+	err := agent.Connect()
+	if err != nil {
+		log.WithField("error", err).Error("Can't connect to mqtt server")
+		os.Exit(1)
 	}
-	robot := gobot.NewRobot("temperature",
-		[]gobot.Connection{mqttAdaptor},
-		work,
-	)
-	robot.Start()
+	go func() {
+		done := make(chan os.Signal)
+		signal.Notify(done, os.Interrupt)
+		<-done
+		log.Info("Shutting down temperature")
+		time.Sleep(2 * time.Second)
+		os.Exit(0)
+	}()
+
+	for !agent.IsTerminated() {
+		update()
+		time.Sleep(time.Duration(updateInterval) * time.Minute)
+	}
 
 }
