@@ -5,17 +5,17 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"time"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/andersbetner/homeautomation/util"
-	"github.com/containous/traefik/log"
+	ag "github.com/andersbetner/mqttagent"
 	"github.com/prometheus/client_golang/prometheus"
-
-	"gobot.io/x/gobot"
-	"gobot.io/x/gobot/platforms/mqtt"
 )
 
 // senseData holds info posted from the sen.se API
@@ -30,37 +30,15 @@ type senseData struct {
 var (
 	nodeUIDMap    map[string]string
 	mqttHost      string
-	mqttAdaptor   *mqtt.Adaptor
+	agent         *ag.Agent
 	updateCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "ab_sensor_updates_total",
 			Help: "How many times this item has been updated.",
 		},
-		[]string{"name", "status", "periodicity"},
+		[]string{"status", "type", "topic"},
 	)
 )
-
-func init() {
-	nodeUIDMap = make(map[string]string)
-	jsonStr, err := ioutil.ReadFile("id_map.json")
-	if err != nil {
-		os.Stderr.WriteString("Can't read id_map.json\n")
-		os.Stderr.WriteString(err.Error() + "\n")
-		os.Exit(1)
-	}
-	err = json.Unmarshal([]byte(jsonStr), &nodeUIDMap)
-	if err != nil {
-		os.Stderr.WriteString("Can't unmarshal id_map.json")
-		os.Stderr.WriteString(err.Error() + "\n")
-		os.Exit(1)
-	}
-	prometheus.MustRegister(updateCounter)
-	mqttHost, _ = os.LookupEnv("SENSE_MQTTHOST")
-	if mqttHost == "" {
-		fmt.Println("env SENSE_MQTTHOST missing, tcp://mqtt.example.com:1884")
-		os.Exit(1)
-	}
-}
 
 // senseHandler parses data posted from the sen.se API and publishes temperature through MQTT
 func senseHandler(w http.ResponseWriter, r *http.Request) {
@@ -71,7 +49,7 @@ func senseHandler(w http.ResponseWriter, r *http.Request) {
 	err := json.Unmarshal(postdata, &indata)
 	if err != nil {
 		log.WithField("error", "post").Error("Error unmarshaling posted value", err)
-		updateCounter.WithLabelValues("500", "unknown").Inc()
+		updateCounter.WithLabelValues("500", "temperature", "parse").Inc()
 		return
 	}
 	response := []byte("ok")
@@ -79,12 +57,54 @@ func senseHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(response)
 	if name, ok := nodeUIDMap[indata.NodeUID]; ok {
 		var temperature = float32(indata.Data.CentidegreeCelsius) / 100
-		mqttAdaptor.Publish("temperature/"+name, []byte(fmt.Sprintf("%v", temperature)))
-		updateCounter.WithLabelValues("200", name).Inc()
+		agent.Publish("temperature/"+name, true, fmt.Sprintf("%v", temperature))
+		updateCounter.WithLabelValues("200", "temperature", name).Inc()
+		log.WithFields(log.Fields{"topic": name, "value": temperature}).Debug("Published")
+	} else {
+		updateCounter.WithLabelValues("400", "temperature", "unknown").Inc()
+		log.WithField("error", fmt.Sprintf("%#v", indata)).Error("Unknown sensor")
 	}
 }
 
+func init() {
+	prometheus.MustRegister(updateCounter)
+	var configFile string
+	flag.StringVar(&mqttHost, "mqtthost", "", "address and port for mqtt server eg tcp://example.com:1883")
+	flag.StringVar(&configFile, "config", "", "full path to configfile eg --config=/etc/id_map.json ")
+	flag.Parse()
+	exit := false
+	if mqttHost == "" {
+		os.Stderr.WriteString("--mqtthost missing eg --mqtthost=tcp://example.com:1883\n")
+		exit = true
+	}
+	if configFile == "" {
+		os.Stderr.WriteString("--config missing eg --configFile=/etc/id_map.json\n")
+		exit = true
+	}
+
+	if exit {
+		os.Exit(1)
+	}
+
+	nodeUIDMap = make(map[string]string)
+	jsonStr, err := ioutil.ReadFile(configFile)
+	if err != nil {
+		os.Stderr.WriteString(fmt.Sprintf("Can't read %s\n", configFile))
+		os.Stderr.WriteString(err.Error() + "\n")
+		os.Exit(1)
+	}
+	err = json.Unmarshal([]byte(jsonStr), &nodeUIDMap)
+	if err != nil {
+		os.Stderr.WriteString("Can't unmarshal id_map.json")
+		os.Stderr.WriteString(err.Error() + "\n")
+		os.Exit(1)
+	}
+
+}
+
 func main() {
+	log.SetLevel(log.DebugLevel)
+
 	prometheusMux := http.NewServeMux()
 	prometheusMux.Handle("/metrics", prometheus.Handler())
 	go util.Webserver("Prometheus", ":9100", prometheusMux)
@@ -93,16 +113,17 @@ func main() {
 	senseMux.HandleFunc("/", senseHandler)
 	go util.Webserver("sense", ":8080", senseMux)
 
-	mqttAdaptor = mqtt.NewAdaptor(mqttHost, "sense")
-	work := func() {
+	agent = ag.NewAgent(mqttHost, "sense")
+	err := agent.Connect()
+	if err != nil {
+		log.WithField("error", err).Error("Can't connect to mqtt server")
+		os.Exit(1)
 	}
 
-	robot := gobot.NewRobot("sense",
-		[]gobot.Connection{mqttAdaptor},
-		work,
-	)
+	for !agent.IsTerminated() {
+		time.Sleep(time.Second * 2)
+	}
 
-	robot.Start()
 }
 
 //{
