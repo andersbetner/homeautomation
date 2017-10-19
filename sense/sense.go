@@ -51,17 +51,20 @@ func senseHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(http.StatusOK)
 	var indata senseData
-	postdata, _ := ioutil.ReadAll(r.Body)
-	err := json.Unmarshal(postdata, &indata)
+	postdata, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		log.WithField("error", "post").Error("Error unmarshaling posted value", err)
+		log.WithField("error", err).Error("Error reading body", err)
 		promUpdateCounter.WithLabelValues("500", "temperature", "parse").Inc()
 
 		return
 	}
-	response := []byte("ok")
-	w.Header().Set("Content-Length", fmt.Sprint(len(response)))
-	w.Write(response)
+	err = json.Unmarshal(postdata, &indata)
+	if err != nil {
+		log.WithField("error", err).Error("Error unmarshaling posted value", err)
+		promUpdateCounter.WithLabelValues("500", "temperature", "parse").Inc()
+
+		return
+	}
 	sensor, ok := nodeUIDMap[indata.NodeUID]
 	if !ok {
 		promUpdateCounter.WithLabelValues("400", "temperature", "unknown").Inc()
@@ -92,7 +95,7 @@ func init() {
 		exit = true
 	}
 	if configFile == "" {
-		os.Stderr.WriteString("--config missing eg --configFile=/etc/id_map.json\n")
+		os.Stderr.WriteString("--config missing eg --config=/etc/id_map.json\n")
 		exit = true
 	}
 
