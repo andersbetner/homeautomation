@@ -49,7 +49,7 @@ var (
 // senseHandler parses data posted from the sen.se API and publishes temperature through MQTT
 func senseHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-	w.WriteHeader(http.StatusOK)
+	defer fmt.Fprint(w, "ok")
 	var indata senseData
 	postdata, err := ioutil.ReadAll(r.Body)
 	if err != nil {
