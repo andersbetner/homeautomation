@@ -24,7 +24,7 @@
               {{ end }}
               {{ range .Reservations }}
                   {{ if .PickupNumber }}
-                  Hämta nr {{ .PickupNumber }} senast {{ .PickupDue.format "2006-01-02" }} {{ .Title }}<br/>
+                  Hämta nr {{ .PickupNumber }} senast {{ .PickupDue.Format "2006-01-02" }} {{ .Title }}<br/>
                   {{ else }}
                   Köplats {{ .QuePosition }} av {{ .BooksTotal }}: {{ .Title }}<br/>
                   {{ end }}
