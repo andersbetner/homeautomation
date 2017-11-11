@@ -43,6 +43,12 @@ var (
 			Help: "Amount on card",
 		}, []string{"type", "topic"},
 	)
+	promOtrafCardStart = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "ab_otraf_card_start",
+			Help: "Timestamp when monthly och day pass starts 0 if no pass",
+		}, []string{"type", "topic"},
+	)
 	promOtrafCardEnd = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "ab_otraf_card_end",
@@ -90,6 +96,7 @@ func update() {
 		}
 		promUpdateCounter.WithLabelValues("200", "otraf", topic).Inc()
 		promOtrafAmount.WithLabelValues("otraf", topic).Set(float64(o.Amount))
+		promOtrafCardStart.WithLabelValues("otraf", topic).Set(float64(o.CardStart.Unix()))
 		promOtrafCardEnd.WithLabelValues("otraf", topic).Set(float64(o.CardEnd.Unix()))
 		log.WithFields(log.Fields{
 			"topic": topic}).Debug("Publish otraf")
@@ -100,6 +107,7 @@ func init() {
 	log.SetLevel(log.DebugLevel)
 	prometheus.MustRegister(promUpdateCounter)
 	prometheus.MustRegister(promOtrafAmount)
+	prometheus.MustRegister(promOtrafCardStart)
 	prometheus.MustRegister(promOtrafCardEnd)
 	var configFile string
 	flag.StringVar(&mqttHost, "mqtthost", "", "address and port for mqtt server eg tcp://example.com:1883")
