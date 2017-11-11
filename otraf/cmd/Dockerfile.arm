@@ -1,0 +1,6 @@
+FROM scratch
+# Get the cert bundle from you favorite distribution
+COPY ca-certificates.crt /etc/ssl/certs/
+COPY otraf-arm /
+
+ENTRYPOINT ["/otraf-arm"]
