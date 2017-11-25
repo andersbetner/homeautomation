@@ -9,9 +9,7 @@ type, topic, status
 package main
 
 import (
-	"encoding/json"
 	"flag"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
@@ -19,6 +17,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/andersbetner/homeautomation/ica"
 	"github.com/andersbetner/homeautomation/util"
 	ag "github.com/andersbetner/mqttagent"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -46,43 +45,19 @@ var (
 	)
 )
 
-type accountInfo struct {
-	AvailableAmount float64
-}
-
 // update gets the latest account funds from ica.se
 func update() {
-	client := &http.Client{
-		CheckRedirect: nil,
-		Timeout:       time.Second * 10,
-	}
-	request, _ := http.NewRequest("GET", "https://api.ica.se/api/login/", nil)
-	request.SetBasicAuth(icaUser, icaPassword)
-	resp, err := client.Do(request)
+	resp, err := ica.GetJSON(icaUser, icaPassword)
 	if err != nil {
-		promUpdateCounter.WithLabelValues("500", "ica", "auth").Inc()
+		promUpdateCounter.WithLabelValues("500", "ica", "get").Inc()
 		log.WithFields(log.Fields{"error": err,
 			"type":  "ica",
-			"topic": "basicauth"}).Error("Error in basic auth")
+			"topic": "getjson"}).Error("Error getting json")
 
 		return
 	}
-	defer resp.Body.Close()
-
-	authTicket := resp.Header.Get("AuthenticationTicket")
-	request, _ = http.NewRequest("GET", "https://api.ica.se/api/user/minasidor/", nil)
-	request.Header.Add("AuthenticationTicket", authTicket)
-	resp, err = client.Do(request)
-	if err != nil {
-		promUpdateCounter.WithLabelValues("500", "ica", "auth").Inc()
-		log.WithFields(log.Fields{"error": err,
-			"type":  "ica",
-			"topic": "authticket"}).Error("Error in authticket")
-
-		return
-	}
-	defer resp.Body.Close()
-	jsonBlob, err := ioutil.ReadAll(resp.Body)
+	icaData := ica.New()
+	icaData, err = ica.ParseJSON(resp, icaData)
 	if err != nil {
 		promUpdateCounter.WithLabelValues("500", "ica", "parse").Inc()
 		log.WithFields(log.Fields{"error": err,
@@ -91,17 +66,28 @@ func update() {
 
 		return
 	}
-	ica := accountInfo{}
-	err = json.Unmarshal(jsonBlob, &ica)
-	if err != nil {
-		promUpdateCounter.WithLabelValues("500", "ica", "parse").Inc()
-		log.WithFields(log.Fields{"error": err,
-			"type":  "ica",
-			"topic": "json"}).Error("Error unmarshal json")
-		return
-	}
 
-	err = agent.Publish("ica/availableamount", true, strconv.Itoa(int(ica.AvailableAmount)))
+	if icaData.AvailableAmount == 0 {
+		log.WithFields(log.Fields{"type": "ica",
+			"topic": "availableamount"}).Error("ICA available amount == 0")
+		html, err := ica.GetHTML(icaUser, icaPassword)
+		if err != nil {
+			promUpdateCounter.WithLabelValues("500", "ica", "get").Inc()
+			log.WithFields(log.Fields{"error": err,
+				"type":  "ica",
+				"topic": "gethtml"}).Error("Error getting html")
+
+			return
+		}
+		icaData, err = ica.ParseHTML(html, icaData)
+		if err != nil {
+			promUpdateCounter.WithLabelValues("500", "ica", "parse").Inc()
+			log.WithFields(log.Fields{"error": err,
+				"type":  "ica",
+				"topic": "parse"}).Error("Error parsing response body html")
+		}
+	}
+	err = agent.Publish("ica/availableamount", true, strconv.Itoa(int(icaData.AvailableAmount)))
 	if err != nil {
 		promUpdateCounter.WithLabelValues("500", "ica", "publish").Inc()
 		log.WithFields(log.Fields{"error": err,
@@ -111,9 +97,9 @@ func update() {
 		return
 	}
 	promUpdateCounter.WithLabelValues("200", "ica", "availableamount").Inc()
-	promAmount.WithLabelValues("availableamount").Set(ica.AvailableAmount)
+	promAmount.WithLabelValues("availableamount").Set(icaData.AvailableAmount)
 
-	err = agent.Publish("ica/all", true, string(jsonBlob))
+	err = agent.Publish("ica/all", true, icaData.JSON)
 	if err != nil {
 		promUpdateCounter.WithLabelValues("500", "ica", "publish").Inc()
 		log.WithFields(log.Fields{"error": err,
@@ -123,7 +109,7 @@ func update() {
 		return
 	}
 	promUpdateCounter.WithLabelValues("200", "ica", "all").Inc()
-	log.WithField("amount", ica.AvailableAmount).Debug("Update published")
+	log.WithField("amount", icaData.AvailableAmount).Debug("Update published")
 
 }
 
