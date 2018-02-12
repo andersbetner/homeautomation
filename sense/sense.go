@@ -60,7 +60,7 @@ func senseHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	err = json.Unmarshal(postdata, &indata)
 	if err != nil {
-		log.WithField("error", err).Error("Error unmarshaling posted value", err)
+		log.WithFields(log.Fields{"error": err, "data": postdata}).Error("Error unmarshaling posted value")
 		promUpdateCounter.WithLabelValues("500", "temperature", "parse").Inc()
 
 		return
