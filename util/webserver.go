@@ -6,7 +6,7 @@ import (
 	"os"
 	"os/signal"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 // Webserver creates a webserver that gracefully shuts down on ctrl-C

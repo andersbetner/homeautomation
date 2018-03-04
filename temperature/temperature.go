@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/andersbetner/homeautomation/util"
 	ag "github.com/andersbetner/mqttagent"
 	"github.com/prometheus/client_golang/prometheus"
