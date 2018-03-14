@@ -11,11 +11,11 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/andersbetner/homeautomation/otraf"
 	"github.com/andersbetner/homeautomation/util"
 	ag "github.com/andersbetner/mqttagent"
 	"github.com/prometheus/client_golang/prometheus"
+	log "github.com/sirupsen/logrus"
 )
 
 type user struct {
@@ -70,7 +70,9 @@ func update() {
 		o := otraf.New(user.Name)
 		resp, err := otraf.GetHTML(user.User, user.Password, user.Tab)
 		if err != nil {
-			// log error
+			log.WithFields(log.Fields{"error": err,
+				"type":  "otraf",
+				"topic": topic}).Error("Error getting html")
 			continue
 		}
 		o, err = otraf.Parse(resp, o)

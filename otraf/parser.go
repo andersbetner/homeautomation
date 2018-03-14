@@ -1,7 +1,6 @@
 package otraf
 
 import (
-	"fmt"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -56,8 +55,7 @@ func Parse(resp *http.Response, o *Otraf) (*Otraf, error) {
 	// Fr&#229;n  2017-01-23 Till 2017-02-22
 	cardRex := regexp.MustCompile(`Från (\d{4}-\d\d-\d\d).*? Till (\d{4}-\d\d-\d\d)`)
 	match = cardRex.FindAllStringSubmatch(page, 1)
-	fmt.Println(match)
-	fmt.Println(page)
+
 	if match != nil {
 		o.CardStart, err = parseDate(match[0][1])
 		if err != nil {
