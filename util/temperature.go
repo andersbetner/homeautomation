@@ -12,8 +12,10 @@ type Temperature struct {
 	Loft        float64
 	Lowe        float64
 	Bedroom     float64
+	Livingroom  float64
 }
 
+// NewTemperature yadayada
 func NewTemperature() *Temperature {
 	ret := &Temperature{}
 	ret.Outdoor = 99
@@ -24,6 +26,7 @@ func NewTemperature() *Temperature {
 	ret.Loft = 99
 	ret.Lowe = 99
 	ret.Bedroom = 99
+	ret.Livingroom = 99
 
 	return ret
 }
@@ -47,6 +50,9 @@ func (t *Temperature) Set(sensor string, value float64) (err error) {
 		t.Lowe = value
 	case "bedroom":
 		t.Bedroom = value
+	case "livingroom":
+		t.Livingroom = value
+
 	default:
 		return errors.New("No sensor named: " + sensor)
 	}
