@@ -1,7 +1,6 @@
 package otraf
 
 import (
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"net/http"
@@ -20,12 +19,8 @@ func GetHTML(user string, password string, tab string) (resp *http.Response, err
 	if err != nil {
 		return resp, err
 	}
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
 	c := &http.Client{
-		Jar:       jar,
-		Transport: tr,
+		Jar: jar,
 	}
 
 	// POSTDATA=={"authSource":10,"keepMeLimitedLoggedIn":true,
