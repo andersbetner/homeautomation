@@ -22,7 +22,7 @@ type Client struct {
 // New creates a new Client
 func NewClient(user string, password string) (*Client, error) {
 	s := &Client{}
-	s.baseURL = "https://www.gotabiblioteken.se/web/gotabiblioteken/"
+	s.baseURL = "https://www.gotabiblioteken.se/web/arena/"
 	s.user = user
 	s.password = password
 
@@ -50,8 +50,8 @@ func (s *Client) Login() error {
 	post.Set("textPassword", s.password)
 
 	resp, err := s.client.PostForm(
-		s.baseURL+
-			"welcome?p_p_id=patronLogin_WAR_arenaportlets&p_p_lifecycle=1&p_p_state=normal&p_p_mode=view&p_p_col_id=column-1&p_p_col_pos=2&p_p_col_count=4&_patronLogin_WAR_arenaportlets__wu=/patronLogin/?wicket:interface=:0:signInPanel:signInFormPanel:signInForm::IFormSubmitListener::",
+		s.baseURL+"welcome"+
+			"?p_p_id=patronLogin_WAR_arenaportlets&p_p_lifecycle=1&p_p_state=normal&p_p_mode=view&p_p_col_id=column-1&p_p_col_pos=4&p_p_col_count=7&_patronLogin_WAR_arenaportlets__wu=/patronLogin/?wicket:interface=:0:signInPanel:signInFormPanel:signInForm::IFormSubmitListener::",
 		post)
 	if err != nil {
 		return err
