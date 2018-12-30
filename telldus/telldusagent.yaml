@@ -1,0 +1,10 @@
+remotes:
+    "902538": "bedroom"
+    "910438": "hall"
+    "975818": "sleep"
+    "8804990": "malva"
+    "1311326": "vega"
+    "902538": "children"
+    "1005542": "display1"
+
+mqtthost: tcp://mqtt:1883
