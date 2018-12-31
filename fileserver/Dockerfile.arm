@@ -1,0 +1,4 @@
+FROM scratch
+COPY fileserver-arm /
+
+ENTRYPOINT ["/fileserver-arm"]
