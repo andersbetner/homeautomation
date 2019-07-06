@@ -55,7 +55,7 @@ func GetJSON(user string, password string) (resp *http.Response, err error) {
 		CheckRedirect: nil,
 		Timeout:       time.Second * 10,
 	}
-	request, _ := http.NewRequest("GET", "https://api.ica.se/api/login/", nil)
+	request, _ := http.NewRequest("GET", "https://handla.api.ica.se/api/login/", nil)
 	request.SetBasicAuth(user, password)
 	resp, err = client.Do(request)
 	if err != nil {
@@ -64,7 +64,7 @@ func GetJSON(user string, password string) (resp *http.Response, err error) {
 	defer resp.Body.Close()
 
 	authTicket := resp.Header.Get("AuthenticationTicket")
-	request, _ = http.NewRequest("GET", "https://api.ica.se/api/user/minasidor/", nil)
+	request, _ = http.NewRequest("GET", "https://handla.api.ica.se/api/user/minasidor/", nil)
 	request.Header.Add("AuthenticationTicket", authTicket)
 	resp, err = client.Do(request)
 	if err != nil {

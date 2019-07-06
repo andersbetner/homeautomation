@@ -27,7 +27,7 @@ func ParseHTML(resp *http.Response, ica *Ica) (*Ica, error) {
 	if err != nil {
 		return ica, err
 	}
-	ica.AvailableAmount = amount
+	ica.Accounts[0].AvailableAmount = amount
 
 	return ica, nil
 }

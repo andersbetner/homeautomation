@@ -2,8 +2,12 @@ package ica
 
 // Ica holds data
 type Ica struct {
+	Accounts []IcaAccount
+	JSON     string
+}
+
+type IcaAccount struct {
 	AvailableAmount float64
-	JSON            string
 }
 
 // New returns a new Opac

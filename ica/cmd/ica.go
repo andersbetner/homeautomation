@@ -10,18 +10,19 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/andersbetner/homeautomation/ica"
 	"github.com/andersbetner/homeautomation/util"
 	ag "github.com/andersbetner/mqttagent"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/prometheus/client_golang/prometheus"
+	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -56,6 +57,7 @@ func update() {
 
 		return
 	}
+	fmt.Println(resp)
 	icaData := ica.New()
 	icaData, err = ica.ParseJSON(resp, icaData)
 	if err != nil {
@@ -66,8 +68,8 @@ func update() {
 
 		return
 	}
-
-	if icaData.AvailableAmount == 0 {
+	fmt.Println(icaData)
+	if icaData.Accounts[0].AvailableAmount == 0 {
 		log.WithFields(log.Fields{"type": "ica",
 			"topic": "availableamount"}).Error("ICA available amount == 0")
 		html, err := ica.GetHTML(icaUser, icaPassword)
@@ -87,7 +89,7 @@ func update() {
 				"topic": "parse"}).Error("Error parsing response body html")
 		}
 	}
-	err = agent.Publish("ica/availableamount", true, strconv.Itoa(int(icaData.AvailableAmount)))
+	err = agent.Publish("ica/availableamount", true, strconv.Itoa(int(icaData.Accounts[0].AvailableAmount)))
 	if err != nil {
 		promUpdateCounter.WithLabelValues("500", "ica", "publish").Inc()
 		log.WithFields(log.Fields{"error": err,
@@ -97,7 +99,7 @@ func update() {
 		return
 	}
 	promUpdateCounter.WithLabelValues("200", "ica", "availableamount").Inc()
-	promAmount.WithLabelValues("availableamount").Set(icaData.AvailableAmount)
+	promAmount.WithLabelValues("availableamount").Set(icaData.Accounts[0].AvailableAmount)
 
 	err = agent.Publish("ica/all", true, icaData.JSON)
 	if err != nil {
@@ -109,7 +111,7 @@ func update() {
 		return
 	}
 	promUpdateCounter.WithLabelValues("200", "ica", "all").Inc()
-	log.WithField("amount", icaData.AvailableAmount).Debug("Update published")
+	log.WithField("amount", icaData.Accounts[0].AvailableAmount).Debug("Update published")
 
 }
 
