@@ -40,18 +40,24 @@ func NewClient(user string, password string) (*Client, error) {
 
 // Login performs a login
 func (s *Client) Login() error {
-	_, err := s.client.Get(s.baseURL + "protected/profile")
+	_, err := s.client.Get(s.baseURL + "welcome")
 	if err != nil {
 		return err
 	}
 	post := url.Values{}
+	post.Set("p_p_id:", "patronLogin_WAR_arenaportlet")
+	post.Set("p_p_lifecycle:", "1")
+	post.Set("p_p_state:", "normal")
+	post.Set("p_p_mode:", "view")
+	post.Set("_patronLogin_WAR_arenaportlet__wu:", "/patronLogin/?wicket:interface=:0:signInPanel:signInFormPanel:signInForm::IFormSubmitListener::")
+
 	post.Set("id__patronLogin__WAR__arenaportlets____3_hf_0=", "")
 	post.Set("openTextUsernameContainer:openTextUsername", s.user)
 	post.Set("textPassword", s.password)
 
 	resp, err := s.client.PostForm(
 		s.baseURL+"welcome"+
-			"?p_p_id=patronLogin_WAR_arenaportlets&p_p_lifecycle=1&p_p_state=normal&p_p_mode=view&p_p_col_id=column-1&p_p_col_pos=4&p_p_col_count=7&_patronLogin_WAR_arenaportlets__wu=/patronLogin/?wicket:interface=:0:signInPanel:signInFormPanel:signInForm::IFormSubmitListener::",
+			"?p_p_id=patronLogin_WAR_arenaportlet&p_p_lifecycle=1&p_p_state=normal&p_p_mode=view&_patronLogin_WAR_arenaportlet__wu=/patronLogin/?wicket:interface=:0:signInPanel:signInFormPanel:signInForm::IFormSubmitListener::",
 		post)
 	if err != nil {
 		return err
@@ -61,6 +67,7 @@ func (s *Client) Login() error {
 		return err
 	}
 	html, err := doc.Html()
+
 	if err != nil {
 		return err
 	}
