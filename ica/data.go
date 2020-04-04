@@ -1,16 +1,22 @@
 package ica
 
+import "time"
+
 // Ica holds data
 type Ica struct {
-	Accounts []IcaAccount
-	JSON     string
+	Balance      float64
+	Available    float64
+	Transactions []IcaTransaction
 }
 
-type IcaAccount struct {
-	AvailableAmount float64
+type IcaTransaction struct {
+	Date     time.Time
+	Location string
+	Discount float64
+	Amount   float64
 }
 
-// New returns a new Opac
+// New returns a new Ica
 func New() *Ica {
 	ica := &Ica{}
 
