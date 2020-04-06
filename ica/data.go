@@ -6,10 +6,11 @@ import "time"
 type Ica struct {
 	Balance      float64
 	Available    float64
-	Transactions []IcaTransaction
+	Transactions []Transaction
 }
 
-type IcaTransaction struct {
+// Transaction for ica account
+type Transaction struct {
 	Date     time.Time
 	Location string
 	Discount float64

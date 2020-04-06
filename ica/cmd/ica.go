@@ -48,54 +48,29 @@ var (
 
 // update gets the latest account funds from ica.se
 func update() {
-	icaClient := &ica.IcaClient{}
-	err := icaClient.Login(icaUser, icaPassword)
-	if err != nil {
-		promUpdateCounter.WithLabelValues("500", "ica", "login").Inc()
-		log.WithFields(log.Fields{"error": err,
-			"type":  "ica",
-			"topic": "login"}).Error("Error logging in")
-
-		return
-	}
-	resp, err := icaClient.GetAccount()
-	if err != nil {
-		promUpdateCounter.WithLabelValues("500", "ica", "account").Inc()
-		log.WithFields(log.Fields{"error": err,
-			"type":  "ica",
-			"topic": "account"}).Error("Error getting account")
-
-		return
-
-	}
+	icaClient := &ica.Client{}
 	icaData := ica.New()
-	icaData, err = ica.ParseAccount(resp, icaData)
+
+	resp, err := icaClient.GetHTML(icaUser, icaPassword)
+	if err != nil {
+		promUpdateCounter.WithLabelValues("500", "ica", "gethtml").Inc()
+		log.WithFields(log.Fields{"error": err,
+			"type":  "ica",
+			"topic": "gethtml"}).Error("Error getting html")
+
+		return
+	}
+
+	icaData, err = ica.ParseHTML(resp, icaData)
+	resp, err = icaClient.GetAccount()
 	if err != nil {
 		promUpdateCounter.WithLabelValues("500", "ica", "parse").Inc()
 		log.WithFields(log.Fields{"error": err,
 			"type":  "ica",
-			"topic": "parse"}).Error("Error parsing response body")
-
-		return
-	}
-	resp, err = icaClient.GetTransactions()
-	if err != nil {
-		promUpdateCounter.WithLabelValues("500", "ica", "transactions").Inc()
-		log.WithFields(log.Fields{"error": err,
-			"type":  "ica",
-			"topic": "transactions"}).Error("Error getting transactions")
+			"topic": "parse"}).Error("Error parsing account data")
 
 		return
 
-	}
-	icaData, err = ica.ParseTransactions(resp, icaData)
-	if err != nil {
-		promUpdateCounter.WithLabelValues("500", "ica", "parse").Inc()
-		log.WithFields(log.Fields{"error": err,
-			"type":  "ica",
-			"topic": "parse"}).Error("Error parsing transactions")
-
-		return
 	}
 
 	err = agent.Publish("ica/availableamount", true, strconv.Itoa(int(icaData.Available)))
