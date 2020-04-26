@@ -118,14 +118,14 @@ func ParseHTML(resp *http.Response, ica *Ica) (*Ica, error) {
 	var balance string
 	doc.Find("div[class=\"account-container account-loaded active\"] dd").EachWithBreak(func(i int, s *goquery.Selection) bool {
 		// We want the first dd
-		if i >= 2 {
+		if i > 2 {
 			return false
 		} else if i == 0 {
 			available = strings.Replace(s.Text(), ",", ".", 1)
 			available = strings.Replace(available, " kr", "", 1)
-		} else if i == 1 {
+		} else if i == 2 {
 			balance = strings.Replace(s.Text(), ",", ".", 1)
-			balance = strings.Replace(available, " kr", "", 1)
+			balance = strings.Replace(balance, " kr", "", 1)
 		}
 		return true
 	})
