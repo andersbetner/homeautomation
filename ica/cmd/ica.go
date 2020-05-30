@@ -148,9 +148,12 @@ func main() {
 	prometheusMux := http.NewServeMux()
 	prometheusMux.Handle("/metrics", prometheus.Handler())
 	go util.Webserver("prometheus", ":9100", prometheusMux)
-
-	agent = ag.NewAgent(mqttHost, "ica")
-	err := agent.Connect()
+	host, err := os.Hostname()
+	if err != nil {
+		host = "ica"
+	}
+	agent = ag.NewAgent(mqttHost, "ica-"+host)
+	err = agent.Connect()
 	if err != nil {
 		log.WithField("error", err).Error("Can't connect to mqtt server")
 		os.Exit(1)
