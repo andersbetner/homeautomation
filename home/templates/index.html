@@ -7,10 +7,10 @@
   </div>
   <div class="content" id="content">
     <div class="col-2">
-      Ute<br />
-      <br />
+      Ute<br /><br />
+
       Tvättstuga<br />
-      Hall nere<br />
+      Hall nere<br /><br />
 
       Loft<br />
       Badrum uppe<br />
@@ -22,12 +22,13 @@
     </div>
     <div class="col-2 right">
       {{ with .Temperature }}
-      {{ printf "%.1f" .Outdoor }} °C<br />
-      <br />
+      {{ printf "%.1f" .Outdoor }} °C<br /><br />
+
       {{ printf "%.1f" .Laundry }} °C<br />
       {{ printf "%.1f" .HallwayDownstairs }} °C<br /><br />
 
       {{ printf "%.1f" .Loft }} °C<br />
+      {{ printf "%.1f" .BathroomUpstairs }} °C<br />
       {{ printf "%.1f" .HallwayUpstairs }} °C<br />
       {{ printf "%.1f" .Bedroom }} °C<br /><br />
 
