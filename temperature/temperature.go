@@ -12,10 +12,10 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/andersbetner/homeautomation/util"
 	ag "github.com/andersbetner/mqttagent"
 	"github.com/prometheus/client_golang/prometheus"
+	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -67,7 +67,7 @@ func update() {
 
 		return
 	}
-	err = agent.Publish("temperature/outdoor", true, fmt.Sprintf("%v", temperature))
+	err = agent.Publish("temperature/outdoor/state", true, fmt.Sprintf("%v", temperature))
 	if err != nil {
 		promUpdateCounter.WithLabelValues("500", "temperature", "publish").Inc()
 		log.WithField("error", err).Error("Error publishing mqtt")

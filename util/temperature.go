@@ -4,29 +4,25 @@ import "errors"
 
 // Temperature holds temperature data from various sensors
 type Temperature struct {
-	Outdoor     float64
-	Outdoorroom float64
-	Shower      float64
-	Hall        float64
-	Kitchen     float64
-	Loft        float64
-	Lowe        float64
-	Bedroom     float64
-	Livingroom  float64
+	Outdoor           float64
+	BathroomUpstairs  float64
+	HallwayDownstairs float64
+	HallwayUpstairs   float64
+	Loft              float64
+	Bedroom           float64
+	Laundry           float64
 }
 
 // NewTemperature yadayada
 func NewTemperature() *Temperature {
 	ret := &Temperature{}
 	ret.Outdoor = 99
-	ret.Outdoorroom = 99
-	ret.Shower = 99
-	ret.Hall = 99
-	ret.Kitchen = 99
+	ret.BathroomUpstairs = 99
+	ret.HallwayDownstairs = 99
+	ret.HallwayUpstairs = 99
 	ret.Loft = 99
-	ret.Lowe = 99
 	ret.Bedroom = 99
-	ret.Livingroom = 99
+	ret.Laundry = 99
 
 	return ret
 }
@@ -36,22 +32,18 @@ func (t *Temperature) Set(sensor string, value float64) (err error) {
 	switch sensor {
 	case "outdoor":
 		t.Outdoor = value
-	case "outdoorroom":
-		t.Outdoorroom = value
-	case "shower":
-		t.Shower = value
-	case "hall":
-		t.Hall = value
-	case "kitchen":
-		t.Kitchen = value
-	case "loft":
+	case "bathroomupstairs", "motion_badrum_uppe_temperature":
+		t.BathroomUpstairs = value
+	case "hallwaydownstairs", "motion_hall_nere_temperature":
+		t.HallwayDownstairs = value
+	case "hallwayupstairs", "motion_hall_uppe_temperature":
+		t.HallwayUpstairs = value
+	case "loft", "motion_loft_temperature":
 		t.Loft = value
-	case "lowe":
-		t.Lowe = value
-	case "bedroom":
+	case "laundry", "motion_tvattstuga_temperature":
+		t.Laundry = value
+	case "bedroom", "motion_sovrum_temperature":
 		t.Bedroom = value
-	case "livingroom":
-		t.Livingroom = value
 
 	default:
 		return errors.New("No sensor named: " + sensor)
