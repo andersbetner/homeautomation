@@ -139,7 +139,8 @@ func render(template string) error {
 }
 func updateTemperature(client mqtt.Client, msg mqtt.Message) {
 	value, err := strconv.ParseFloat(string(msg.Payload()), 64)
-	sensor := path.Base(msg.Topic())
+	sensor := path.Base(strings.Replace(msg.Topic(), "/state", "", 1))
+
 	if err != nil {
 		log.WithFields(log.Fields{"error": err,
 			"type": "temperature",
@@ -307,7 +308,13 @@ func main() {
 		log.WithField("error", err).Error("Can't connect to mqtt server")
 		os.Exit(1)
 	}
-	agent.Subscribe("temperature/#", updateTemperature)
+	agent.Subscribe("temperature/outdoor/state", updateTemperature)
+	agent.Subscribe("homeassistant/sensor/motion_loft_temperature/state", updateTemperature)
+	agent.Subscribe("homeassistant/sensor/motion_hall_uppe_temperature/state", updateTemperature)
+	agent.Subscribe("homeassistant/sensor/motion_hall_nere_temperature/state", updateTemperature)
+	agent.Subscribe("homeassistant/sensor/motion_sovrum_temperature/state", updateTemperature)
+	agent.Subscribe("homeassistant/sensor/motion_badrum_uppe_temperature/state", updateTemperature)
+	agent.Subscribe("homeassistant/sensor/motion_tvattstuga_temperature/state", updateTemperature)
 	agent.Subscribe("ica/availableamount", updateIca)
 	agent.Subscribe("opac/#", updateOpac)
 	agent.Subscribe("otraf/#", updateOtraf)
